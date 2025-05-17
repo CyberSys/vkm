@@ -31,8 +31,13 @@ internal static class Vk
             ApplicationId = 1980660,
             Login = withLogin,
             Password = andPassword,
-            Settings = All
-        });
+    Settings = All,
+    TwoFactorAuthorization = () =>
+    {
+        "Enter 2FA code:".Log();
+        return Console.ReadLine()!;
+    }
+});
         $"Login as {api.GetUserLink()}".Log();
         WriteAllLines(Cache, new[] {withLogin, andPassword});
         return api;
