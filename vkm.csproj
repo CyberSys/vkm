@@ -13,5 +13,59 @@
         <PackageReference Include="VkNet" Version="1.57.0" />
         <!--Дает доступ к сообщениям, комментариям и музыке VK-->
         <PackageReference Include="VkNet.AudioBypassService" Version="1.7.0" />
+        <!--Библиотека для работы с FFmpeg-->
+        <PackageReference Include="Xabe.FFmpeg" Version="5.1.0" />
     </ItemGroup>
+
+    <!-- MSBuild таргет для автоматического копирования ffmpeg.exe и ffprobe.exe в выходную директорию после сборки -->
+    <Target Name="CopyFFmpeg" AfterTargets="Build">
+        <Message Text="Поиск и копирование ffmpeg.exe и ffprobe.exe..." Importance="high" />
+
+        <!-- Определяем пути к временным файлам -->
+        <PropertyGroup>
+            <FFmpegPathTempFile>$(IntermediateOutputPath)ffmpeg_path.txt</FFmpegPathTempFile>
+            <FFprobePathTempFile>$(IntermediateOutputPath)ffprobe_path.txt</FFprobePathTempFile>
+        </PropertyGroup>
+
+        <!-- Убедимся, что промежуточная директория существует -->
+        <MakeDir Directories="$(IntermediateOutputPath)" Condition="!Exists('$(IntermediateOutputPath)')" />
+
+        <!-- Поиск ffmpeg.exe в PATH и запись пути во временный файл -->
+        <Exec Command="where ffmpeg > $(FFmpegPathTempFile)" ContinueOnError="true">
+            <Output TaskParameter="ExitCode" PropertyName="FFmpegExitCode" />
+        </Exec>
+
+        <!-- Читаем путь ffmpeg из временного файла -->
+        <ReadLinesFromFile File="$(FFmpegPathTempFile)" Condition="'$(FFmpegExitCode)' == '0'">
+            <Output TaskParameter="Lines" PropertyName="FFmpegPath" />
+        </ReadLinesFromFile>
+
+        <!-- Копируем ffmpeg.exe, если найден (ExitCode == 0) -->
+        <Message Text="ffmpeg.exe найден: $(FFmpegPath)" Importance="high" Condition="'$(FFmpegExitCode)' == '0'" />
+        <Copy SourceFiles="$(FFmpegPath.Trim())" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" Condition="'$(FFmpegExitCode)' == '0'" />
+        <Message Text="ffmpeg.exe скопирован в $(OutDir)" Importance="high" Condition="'$(FFmpegExitCode)' == '0'" />
+        <Warning Text="ffmpeg.exe не найден в PATH системы. Установите FFmpeg или добавьте его директорию в PATH, иначе конвертация HLS/m3u8 будет недоступна." Condition="'$(FFmpegExitCode)' != '0'" />
+
+        <!-- Поиск ffprobe.exe в PATH и запись пути во временный файл -->
+        <Exec Command="where ffprobe > $(FFprobePathTempFile)" ContinueOnError="true">
+             <Output TaskParameter="ExitCode" PropertyName="FFprobeExitCode" />
+        </Exec>
+
+        <!-- Читаем путь ffprobe из временного файла -->
+        <ReadLinesFromFile File="$(FFprobePathTempFile)" Condition="'$(FFprobeExitCode)' == '0'">
+            <Output TaskParameter="Lines" PropertyName="FFprobePath" />
+        </ReadLinesFromFile>
+
+        <!-- Копируем ffprobe.exe, если найден (ExitCode == 0) -->
+         <Message Text="ffprobe.exe найден: $(FFprobePath)" Importance="high" Condition="'$(FFprobeExitCode)' == '0'" />
+         <Copy SourceFiles="$(FFprobePath.Trim())" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" Condition="'$(FFprobeExitCode)' == '0'" />
+         <Message Text="ffprobe.exe скопирован в $(OutDir)" Importance="high" Condition="'$(FFprobeExitCode)' == '0'" />
+         <Warning Text="ffprobe.exe не найден в PATH системы. Обычно поставляется вместе с FFmpeg." Condition="'$(FFprobeExitCode)' != '0'" />
+
+        <!-- Удаляем временные файлы -->
+        <Delete Files="$(FFmpegPathTempFile)" Condition="Exists('$(FFmpegPathTempFile)')" />
+        <Delete Files="$(FFprobePathTempFile)" Condition="Exists('$(FFprobePathTempFile)')" />
+
+    </Target>
+
 </Project>
